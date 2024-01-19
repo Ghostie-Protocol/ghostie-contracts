@@ -17,6 +17,8 @@ contract Tickets is ERC721Enumerable, Ownable {
     mapping(uint256 => string[]) private ticketNumbers;
     mapping(uint256 => uint256) private ticketValue;
 
+    event Mint(address indexed _to, uint256 _value, string[] _numbers);
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -36,15 +38,18 @@ contract Tickets is ERC721Enumerable, Ownable {
         address _to,
         uint256 _value,
         string[] memory _numbers
-    ) public onlyOwner {
+    ) public onlyOwner returns (uint256) {
         require(_to != address(0), "Destination address is 0x0");
 
         _ticketIds.increment();
         uint256 newTicketId = _ticketIds.current();
-        
+
         _mint(_to, newTicketId);
         ticketNumbers[newTicketId] = _numbers;
         ticketValue[newTicketId] = _value;
+        emit Mint(_to, _value, _numbers);
+
+        return newTicketId;
     }
 
     function setBaseURI(string memory _uri) public onlyOperator {
