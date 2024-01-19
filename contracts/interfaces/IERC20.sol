@@ -21,6 +21,8 @@ interface IERC20 {
         uint amount
     ) external returns (bool);
 
+    function decimals() external view returns (uint8);
+
     event Transfer(address indexed from, address indexed to, uint value);
     event Approval(address indexed owner, address indexed spender, uint value);
 }

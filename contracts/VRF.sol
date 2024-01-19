@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import "./interfaces/IGhostieCore.sol";
 
 contract VRF is VRFConsumerBaseV2, ConfirmedOwner {
     event RequestSent(uint256 requestId, uint32 numWords);
@@ -16,10 +17,13 @@ contract VRF is VRFConsumerBaseV2, ConfirmedOwner {
     }
     mapping(uint256 => RequestStatus)
         public s_requests; /* requestId --> requestStatus */
+
     VRFCoordinatorV2Interface COORDINATOR;
 
     // Your subscription ID.
     uint64 s_subscriptionId;
+
+    IGhostieCore ghostieCore;
 
     // past requests Id.
     uint256[] public requestIds;
@@ -44,22 +48,24 @@ contract VRF is VRFConsumerBaseV2, ConfirmedOwner {
 
     // For this example, retrieve 2 random values in one request.
     // Cannot exceed VRFCoordinatorV2.MAX_NUM_WORDS.
-    uint32 numWords = 2;
+    uint32 numWords = 1;
 
     /**
      * HARDCODED FOR SEPOLIA
      * COORDINATOR: 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
      */
     constructor(
-        uint64 subscriptionId
+        uint64 subscriptionId,
+        address coreContract
     )
         VRFConsumerBaseV2(0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625)
-        ConfirmedOwner(msg.sender)
+        ConfirmedOwner(coreContract)
     {
         COORDINATOR = VRFCoordinatorV2Interface(
             0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
         );
         s_subscriptionId = subscriptionId;
+        ghostieCore = IGhostieCore(coreContract);
     }
 
     // Assumes the subscription is funded sufficiently.
@@ -94,6 +100,11 @@ contract VRF is VRFConsumerBaseV2, ConfirmedOwner {
         require(s_requests[_requestId].exists, "request not found");
         s_requests[_requestId].fulfilled = true;
         s_requests[_requestId].randomWords = _randomWords;
+
+        uint256 winningNumber = _randomWords[0] % 999999;
+
+        ghostieCore.updateWinningNumber(winningNumber);
+
         emit RequestFulfilled(_requestId, _randomWords);
     }
 
