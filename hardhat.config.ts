@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
+import "@nomicfoundation/hardhat-viem";
 import accountUtils from "./utils/accountUtils";
 
 const config: HardhatUserConfig = {
@@ -58,7 +59,6 @@ const config: HardhatUserConfig = {
 
     localhost: {
       url: "http://127.0.0.1:8545/",
-      accounts: accountUtils.getAccounts(),
     },
   },
 };
