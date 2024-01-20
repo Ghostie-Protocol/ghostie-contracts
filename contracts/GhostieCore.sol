@@ -22,6 +22,9 @@ contract GhostieCore is IGhostieCore, Ownable {
         uint256 drawDate;
         string winningNumber;
         uint256 randomRequestId;
+        uint256 ticketPrice;
+        uint256 totalBalance;
+        bool isCheckWinnerPrice;
         address[] matchAll;
         address[] match5d;
         address[] match4d;
@@ -43,12 +46,28 @@ contract GhostieCore is IGhostieCore, Ownable {
     uint256 public usdcDecimals;
 
     mapping(uint256 => RoundDetail) public rounds;
-    mapping(address userAddr => mapping(uint256 round => uint256[]))
-        public investorTickets;
-    mapping(address userAddr => mapping(uint256 round => string[]))
-        public investorNumbers;
-    mapping(address userAddr => mapping(uint256 round => uint256))
-        public investorRoundBalance;
+
+    // mapping(address userAddr => mapping(uint256 round => uint256[])) investorTickets;
+    // mapping(address userAddr => mapping(uint256 round => string[])) investorNumbers;
+    // mapping(address userAddr => mapping(uint256 round => mapping(uint256 => string[]))) investorTicketDetail;
+    // mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
+
+    enum WinnerPrice {
+        JACKPOT,
+        LAST_FIVE_DIGITS,
+        LAST_FOUR_DIGITS,
+        LAST_THREE_DIGITS,
+        ZERO
+    }
+
+    struct UserTicketDetail {
+        uint256 ticketId;
+        string[] numbers;
+        WinnerPrice[] winnerType;
+        uint256 totalBalance;
+    }
+
+    mapping(address userAddr => mapping(uint256 round => UserTicketDetail[])) investors;
 
     constructor(address _usdc, address _ticket, address _vrfAddress) Ownable() {
         usdc = IERC20(_usdc);
@@ -79,6 +98,7 @@ contract GhostieCore is IGhostieCore, Ownable {
         _roundDetail.startDate = startDate;
         _roundDetail.endDate = endDate;
         _roundDetail.drawDate = endDate + roundTime;
+        _roundDetail.ticketPrice = ticketPrice;
 
         rounds[currentRound] = _roundDetail;
 
@@ -115,54 +135,143 @@ contract GhostieCore is IGhostieCore, Ownable {
 
         usdc.transferFrom(msg.sender, address(this), totalTicketPrice);
 
-        for (uint i = 0; i < _numbers.length; i++) {
-            investorNumbers[msg.sender][currentRound].push(_numbers[i]);
-        }
-
         uint256 ticketId = ticket.mint(msg.sender, totalTicketPrice, _numbers);
-        investorTickets[msg.sender][currentRound].push(ticketId);
-        investorRoundBalance[msg.sender][currentRound] += totalTicketPrice;
+        // investorTickets[msg.sender][currentRound].push(ticketId);
+
+        // for (uint i = 0; i < _numbers.length; i++) {
+        //     investorNumbers[msg.sender][currentRound].push(_numbers[i]);
+        // }
+        // investorTicketDetail[msg.sender][currentRound][ticketId] = _numbers;
+
+        // rounds[currentRound].totalBalance += totalTicketPrice;
+
+        // investorRoundBalance[msg.sender][currentRound] += totalTicketPrice;
+
+        uint256 totalTicketLength = investors[msg.sender][currentRound].length;
+        UserTicketDetail memory userTickets = investors[msg.sender][
+            currentRound
+        ][totalTicketLength];
+
+        userTickets.numbers = _numbers;
+        userTickets.ticketId = ticketId;
+        userTickets.totalBalance = totalTicketPrice;
+
+        investors[msg.sender][currentRound].push(userTickets);
 
         emit BuyTicketSuccess(totalTicketPrice, currentRound, ticketId);
     }
 
     function updateWinningNumber(uint256 winningNumber) external {
-        string memory winNumber = uint256ToString(winningNumber);
-        rounds[currentRound].winningNumber = winNumber;
+        RoundDetail memory _round = rounds[currentRound];
+
+        if (stringsEqual(_round.winningNumber, "")) {
+            string memory winNumber = uint256ToString(winningNumber);
+
+            winNumber = zeroDigit(winNumber);
+            rounds[currentRound].winningNumber = winNumber;
+
+            checkWinningDrawPrice(currentRound);
+
+            rounds[currentRound].isCheckWinnerPrice = true;
+        }
     }
 
-    function cliam(uint256 round) external {
+    // function getAllTicketsPerRound(uint256 round) external {
+    //     RoundDetail memory roundDetail = rounds[round];
+    // }
+
+    function zeroDigit(string memory s) public pure returns (string memory) {
+        do {
+            s = concatenateStrings("0", s);
+        } while (bytes(s).length <= 6);
+        return s;
+    }
+
+    function cliam(uint256 round) external view {
         uint256 cliamState = rounds[round].drawDate - block.timestamp;
 
         if (cliamState > 0) {
             // interest claim
         } else {
             // total cliam
-            string[] memory _numbers = investorNumbers[msg.sender][round];
+            RoundDetail memory _round = rounds[round];
 
-            RoundDetail memory roundDetail = rounds[round];
+            address[] memory matchAll = _round.matchAll;
+            address[] memory match5d = _round.match5d;
+            address[] memory match4d = _round.match4d;
+            address[] memory match3d = _round.match3d;
 
-            string memory winningNumber = roundDetail.winningNumber;
-            string memory match5dResult = substring(winningNumber, 1, 6);
-            string memory match4dResult = substring(winningNumber, 2, 6);
-            string memory match3dResult = substring(winningNumber, 3, 6);
-
-            for (uint i = 0; i < _numbers.length; i++) {
-                string memory number5d = substring(_numbers[i], 1, 6);
-                string memory number4d = substring(_numbers[i], 2, 6);
-                string memory number3d = substring(_numbers[i], 3, 6);
-                if (stringsEqual(_numbers[i], roundDetail.winningNumber)) {
-                    rounds[round].matchAll.push(msg.sender);
-                } else if (stringsEqual(number5d, match5dResult)) {
-                    rounds[round].match5d.push(msg.sender);
-                } else if (stringsEqual(number4d, match4dResult)) {
-                    rounds[round].match4d.push(msg.sender);
-                } else if (stringsEqual(number3d, match3dResult)) {
-                    rounds[round].match3d.push(msg.sender);
-                }
+            for (uint i = 0; i < matchAll.length; i++) {
+                if (matchAll[i] == msg.sender) {}
+            }
+            for (uint i = 0; i < match5d.length; i++) {
+                if (match5d[i] == msg.sender) {}
+            }
+            for (uint i = 0; i < match4d.length; i++) {
+                if (match4d[i] == msg.sender) {}
+            }
+            for (uint i = 0; i < match3d.length; i++) {
+                if (match3d[i] == msg.sender) {}
             }
         }
     }
+
+    function checkWinningDrawPrice(uint256 round) internal {
+        // string[] memory _numbers = investorNumbers[msg.sender][round];
+
+        RoundDetail memory roundDetail = rounds[round];
+
+        UserTicketDetail[] memory userTiecks = investors[msg.sender][round];
+
+        string memory jackpotResult = roundDetail.winningNumber;
+        string memory match5dResult = substring(jackpotResult, 1, 6);
+        string memory match4dResult = substring(jackpotResult, 2, 6);
+        string memory match3dResult = substring(jackpotResult, 3, 6);
+
+        for (uint i = 0; i < userTiecks.length; i++) {
+            string[] memory numbers = userTiecks[i].numbers;
+
+            for (uint j = 0; j < numbers.length; j++) {
+                string memory number5d = substring(numbers[i], 1, 6);
+                string memory number4d = substring(numbers[i], 2, 6);
+                string memory number3d = substring(numbers[i], 3, 6);
+
+                WinnerPrice resultWinPrice = investors[msg.sender][round][i]
+                    .winnerType[j];
+
+                if (stringsEqual(numbers[i], jackpotResult)) {
+                    resultWinPrice = WinnerPrice.JACKPOT;
+                } else if (stringsEqual(number5d, match5dResult)) {
+                    resultWinPrice = WinnerPrice.LAST_FIVE_DIGITS;
+                } else if (stringsEqual(number4d, match4dResult)) {
+                    resultWinPrice = WinnerPrice.LAST_FOUR_DIGITS;
+                } else if (stringsEqual(number3d, match3dResult)) {
+                    resultWinPrice = WinnerPrice.LAST_THREE_DIGITS;
+                } else {
+                    resultWinPrice = WinnerPrice.ZERO;
+                }
+
+                investors[msg.sender][round][i].winnerType[j] = resultWinPrice;
+            }
+        }
+
+        // for (uint i = 0; i < _numbers.length; i++) {
+        //     string memory number5d = substring(_numbers[i], 1, 6);
+        //     string memory number4d = substring(_numbers[i], 2, 6);
+        //     string memory number3d = substring(_numbers[i], 3, 6);
+        //     if (stringsEqual(_numbers[i], jackpotResult)) {
+        //         rounds[round].matchAll.push(msg.sender);
+        //     } else if (stringsEqual(number5d, match5dResult)) {
+        //         rounds[round].match5d.push(msg.sender);
+        //     } else if (stringsEqual(number4d, match4dResult)) {
+        //         rounds[round].match4d.push(msg.sender);
+        //     } else if (stringsEqual(number3d, match3dResult)) {
+        //         rounds[round].match3d.push(msg.sender);
+        //     }
+        // }
+    }
+
+    function history() external {}
 
     function substring(
         string memory str,
@@ -175,6 +284,14 @@ contract GhostieCore is IGhostieCore, Ownable {
             result[i - startIndex] = strBytes[i];
         }
         return string(result);
+    }
+
+    function concatenateStrings(
+        string memory a,
+        string memory b
+    ) public pure returns (string memory) {
+        bytes memory concatenatedBytes = abi.encodePacked(a, b);
+        return string(concatenatedBytes);
     }
 
     function stringsEqual(
