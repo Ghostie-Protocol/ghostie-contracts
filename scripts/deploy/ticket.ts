@@ -9,7 +9,6 @@ export async function deployTicket(
   coreAddress: `0x${string}`
 ) {
   const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
-
   const contract = await hre.viem.deployContract("Tickets", [
     name,
     symbol,

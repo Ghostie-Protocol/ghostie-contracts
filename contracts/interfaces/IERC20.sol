@@ -23,6 +23,8 @@ interface IERC20 {
 
     function decimals() external view returns (uint8);
 
+    function mint(address _account, uint256 _amount) external;
+
     event Transfer(address indexed from, address indexed to, uint value);
     event Approval(address indexed owner, address indexed spender, uint value);
 }

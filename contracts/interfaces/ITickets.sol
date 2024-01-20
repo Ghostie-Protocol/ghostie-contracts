@@ -13,7 +13,11 @@ interface ITickets {
 
     function setBaseURI(string memory _uri) external;
 
+    function valueDecimal() external returns (uint);
+
     function getTicketNumbers(
         uint256 _id
     ) external view returns (string[] memory);
+
+    function getTicketValue(uint256 _id) external view returns (uint256);
 }
