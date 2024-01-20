@@ -9,10 +9,10 @@ import "./interfaces/ITickets.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract GhostieCore is IGhostieCore, Ownable {
+contract GhostieCores is IGhostieCore, Ownable {
     using Strings for string;
 
-    IVRF private immutable vrfCore;
+    IVRF private vrfCore;
     IERC20 immutable usdc;
     ITickets immutable ticket;
 
@@ -43,24 +43,29 @@ contract GhostieCore is IGhostieCore, Ownable {
     uint8 public usdcDecimals;
 
     mapping(uint256 => RoundDetail) rounds;
-    mapping(uint256 => mapping(string => address[])) ticketsDetails;
     mapping(address => mapping(uint256 => UserLottoRound)) investorDetail;
 
-    constructor(address _vrfAddress, address _usdc, address _ticket) {
-        vrfCore = IVRF(_vrfAddress);
+    constructor(
+        address _usdc,
+        address _ticket,
+        address _owner,
+        address _vrfAddress
+    ) Ownable() {
         usdc = IERC20(_usdc);
         ticket = ITickets(_ticket);
+        vrfCore = IVRF(_vrfAddress);
+
+        transferOwnership(_owner);
 
         usdcDecimals = usdc.decimals();
-
         ticketPrice = 10 * 10 ** usdcDecimals;
-        roundTime = 90 days;
+        roundTime = 10 minutes;
     }
 
     function startLottoRound(
         uint256 startDate,
         uint256 endDate
-    ) external returns (uint256) {
+    ) external onlyOwner returns (uint256) {
         RoundDetail memory _roundDetail;
 
         if (currentRound == 0) {
@@ -103,10 +108,6 @@ contract GhostieCore is IGhostieCore, Ownable {
         require(userBalance >= totalTicketPrice, "Your balance is not enough!");
 
         usdc.transfer(address(this), totalTicketPrice);
-
-        for (uint i = 0; i < _numbers.length; i++) {
-            ticketsDetails[currentRound][_numbers[i]].push(msg.sender);
-        }
 
         uint256 ticketId = ticket.mint(msg.sender, totalTicketPrice, _numbers);
 

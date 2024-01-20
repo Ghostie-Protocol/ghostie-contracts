@@ -1,21 +1,37 @@
 import { formatEther, parseEther } from "viem";
 import hre from "hardhat";
+import { deployCoreContract } from "./deploy/core";
+import { privateKeyToAccount } from "viem/accounts";
+import accountUtils from "../utils/accountUtils";
+import addressUtils from "../utils/addressUtils";
+import { deployTicket } from "./deploy/ticket";
+import { deployVRF } from "./deploy/vrf";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = BigInt(currentTimestampInSeconds + 60);
+  const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
+  const vrfAddress = "0xb7e50b4961d3d00b60789ac4a3f1db1041ca8f06";
 
-  const lockedAmount = parseEther("0.001");
+  const { VrfContract } = await deployVRF();
 
-  const lock = await hre.viem.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
-
-  console.log(
-    `Lock with ${formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
+  const { ticketContract } = await deployTicket(
+    "Ghostie Protocal Tickets",
+    "GHOSTIE",
+    signer.address
   );
+  const { coreContract } = await deployCoreContract(
+    ticketContract.address,
+    VrfContract.address
+  );
+
+  const contractAddress = {
+    Tickets: ticketContract.address,
+    Core: coreContract.address,
+    VRF: VrfContract.address,
+  };
+
+  await addressUtils.saveAddresses(hre.network.name, contractAddress);
+
+  console.log(`deploy newwork => ${hre.network.name}`, contractAddress);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

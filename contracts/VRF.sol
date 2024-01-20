@@ -6,7 +6,7 @@ import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "./interfaces/IGhostieCore.sol";
 
-contract VRF is VRFConsumerBaseV2, ConfirmedOwner {
+contract VRFs is VRFConsumerBaseV2, ConfirmedOwner {
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
 
@@ -55,16 +55,19 @@ contract VRF is VRFConsumerBaseV2, ConfirmedOwner {
      * COORDINATOR: 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
      */
     constructor(
-        uint64 subscriptionId,
-        address coreContract
+        uint64 subscriptionId
     )
         VRFConsumerBaseV2(0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625)
-        ConfirmedOwner(coreContract)
+        ConfirmedOwner(msg.sender)
     {
         COORDINATOR = VRFCoordinatorV2Interface(
             0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
         );
         s_subscriptionId = subscriptionId;
+    }
+
+    function updateOwner(address coreContract) external onlyOwner {
+        transferOwnership(coreContract);
         ghostieCore = IGhostieCore(coreContract);
     }
 

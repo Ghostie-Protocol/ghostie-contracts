@@ -1,11 +1,11 @@
-import deployTicket from "../deploy/index";
+import { deployTicket } from "../deploy/ticket";
 import accountUtils from "../../utils/accountUtils";
 import { privateKeyToAccount } from "viem/accounts";
 
 const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
 
 export default async function main() {
-  const ticketsContract = await deployTicket(
+  const { ticketContract: ticketsContract } = await deployTicket(
     "Ghostie Protocal Tickets",
     "GHOSTIE",
     signer.address

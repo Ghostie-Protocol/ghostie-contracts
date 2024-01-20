@@ -3,7 +3,7 @@ import addressUtil from "../../utils/addressUtils";
 import accountUtils from "../../utils/accountUtils";
 import { privateKeyToAccount } from "viem/accounts";
 
-export default async function deployTicket(
+export async function deployTicket(
   name: string,
   symbol: string,
   coreAddress: `0x${string}`
@@ -17,9 +17,9 @@ export default async function deployTicket(
     signer.address,
   ]);
 
-  await addressUtil.saveAddresses(hre.network.name, {
-    Tickets: contract.address,
-  });
+  // await addressUtil.saveAddresses(hre.network.name, {
+  //   Tickets: contract.address,
+  // });
 
-  return contract;
+  return { ticketContract: contract };
 }
