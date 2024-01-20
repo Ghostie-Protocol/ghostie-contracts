@@ -1,10 +1,13 @@
 import hre from "hardhat";
 import { privateKeyToAccount } from "viem/accounts";
-import { VRFs__factory } from "../../typechain-types/factories/contracts/VRF.sol";
 import accountUtils from "../../utils/accountUtils";
 
-export async function deployVRF() {
-  const contract = await hre.viem.deployContract("VRFs", [7146]);
+export async function deployVRF(coordinator: string, keyhash: string) {
+  const contract = await hre.viem.deployContract("VRF", [
+    6975,
+    coordinator,
+    keyhash,
+  ]);
 
-  return { VrfContract: contract };
+  return { vrfContract: contract };
 }

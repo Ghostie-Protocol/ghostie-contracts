@@ -9,7 +9,7 @@ import "./interfaces/ITickets.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract GhostieCores is IGhostieCore, Ownable {
+contract GhostieCore is IGhostieCore, Ownable {
     using Strings for string;
 
     IVRF private vrfCore;
@@ -43,21 +43,17 @@ contract GhostieCores is IGhostieCore, Ownable {
     uint256 public usdcDecimals;
 
     mapping(uint256 => RoundDetail) public rounds;
-    mapping(address userAddr => mapping(uint256 round => uint256[])) investorTickets;
-    mapping(address userAddr => mapping(uint256 round => string[])) investorNumbers;
-    mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
+    mapping(address userAddr => mapping(uint256 round => uint256[]))
+        public investorTickets;
+    mapping(address userAddr => mapping(uint256 round => string[]))
+        public investorNumbers;
+    mapping(address userAddr => mapping(uint256 round => uint256))
+        public investorRoundBalance;
 
-    constructor(
-        address _usdc,
-        address _ticket,
-        address _owner,
-        address _vrfAddress
-    ) Ownable() {
+    constructor(address _usdc, address _ticket, address _vrfAddress) Ownable() {
         usdc = IERC20(_usdc);
         ticket = ITickets(_ticket);
         vrfCore = IVRF(_vrfAddress);
-
-        transferOwnership(_owner);
 
         usdcDecimals = uint256(usdc.decimals());
         ticketPrice = 10 * 10 ** usdcDecimals;
@@ -91,10 +87,14 @@ contract GhostieCores is IGhostieCore, Ownable {
     }
 
     function closeLottoRound() external {
+        RoundDetail memory _roundDetail = rounds[currentRound];
+        require(
+            _roundDetail.endDate <= block.timestamp,
+            "The sale time has not yet expired."
+        );
+
         uint256 requestId = vrfCore.requestRandomWords();
         rounds[currentRound].randomRequestId = requestId;
-
-        //
     }
 
     function buyTicket(string[] memory _numbers) external {
@@ -141,12 +141,10 @@ contract GhostieCores is IGhostieCore, Ownable {
             string[] memory _numbers = investorNumbers[msg.sender][round];
 
             RoundDetail memory roundDetail = rounds[round];
+
             string memory winningNumber = roundDetail.winningNumber;
-
             string memory match5dResult = substring(winningNumber, 1, 6);
-
             string memory match4dResult = substring(winningNumber, 2, 6);
-
             string memory match3dResult = substring(winningNumber, 3, 6);
 
             for (uint i = 0; i < _numbers.length; i++) {

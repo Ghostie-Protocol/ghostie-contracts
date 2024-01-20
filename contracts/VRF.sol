@@ -5,9 +5,10 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "./interfaces/IGhostieCore.sol";
+import "./interfaces/IVRF.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract VRFs is VRFConsumerBaseV2, Ownable {
+contract VRF is VRFConsumerBaseV2, Ownable {
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
 
@@ -16,6 +17,7 @@ contract VRFs is VRFConsumerBaseV2, Ownable {
         bool exists; // whether a requestId exists
         uint256[] randomWords;
     }
+
     mapping(uint256 => RequestStatus)
         public s_requests; /* requestId --> requestStatus */
 
@@ -33,7 +35,7 @@ contract VRFs is VRFConsumerBaseV2, Ownable {
     // The gas lane to use, which specifies the maximum gas price to bump to.
     // For a list of available gas lanes on each network,
     // see https://docs.chain.link/docs/vrf/v2/subscription/supported-networks/#configurations
-    bytes32 keyHash =
+    bytes32 public keyHash =
         0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c;
 
     // Depends on the number of requested values that you want sent to the
@@ -51,23 +53,40 @@ contract VRFs is VRFConsumerBaseV2, Ownable {
     // Cannot exceed VRFCoordinatorV2.MAX_NUM_WORDS.
     uint32 numWords = 1;
 
+    address public coordinator;
+
     /**
      * HARDCODED FOR SEPOLIA
      * COORDINATOR: 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
      */
     constructor(
-        uint64 subscriptionId
-    ) VRFConsumerBaseV2(0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625) Ownable() {
-        COORDINATOR = VRFCoordinatorV2Interface(
-            0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
-        );
+        uint64 subscriptionId,
+        address _coordinator,
+        bytes32 _keyhash
+    ) VRFConsumerBaseV2(_coordinator) Ownable() {
+        COORDINATOR = VRFCoordinatorV2Interface(_coordinator);
         s_subscriptionId = subscriptionId;
-        transferOwnership(msg.sender);
+        keyHash = _keyhash;
+        coordinator = _coordinator;
     }
 
-    function updateOwner(address coreContract) external onlyOwner {
-        transferOwnership(coreContract);
+    function updateRequestId(
+        uint64 subscriptionId,
+        bytes32 _keyHash,
+        address _coordinator
+    ) external {
+        s_subscriptionId = subscriptionId;
+        coordinator = _coordinator;
+        keyHash = _keyHash;
+    }
+
+    function updateOwner(address coreContract, address owner) external {
+        transferOwnership(owner);
         ghostieCore = IGhostieCore(coreContract);
+    }
+
+    function getCoreAddress() external view returns (address) {
+        return address(ghostieCore);
     }
 
     // Assumes the subscription is funded sufficiently.

@@ -8,28 +8,48 @@ import { deployTicket } from "../deploy/ticket";
 import { deployVRF } from "../deploy/vrf";
 
 async function main() {
-  const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
-  const vrfAddress = "0xb7e50b4961d3d00b60789ac4a3f1db1041ca8f06";
+  const [myWallet] = await hre.viem.getWalletClients();
 
-  const { VrfContract } = await deployVRF();
+  const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
+
+  const mumbai = {
+    usdtMumbai: "0x28F3fED00E6AB1714E43860e2A31449E357Bc358",
+    coordinator: "0x7a1BaC17Ccc5b313516C5E16fb24f7659aA5ebed",
+    keyHash:
+      "0x4b09e658ed251bcafeebbc69400383d49f344ace09b9576fe248bb02c003fe9f",
+  };
+
+  const sepolia = {
+    usdcAddress: "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8",
+    coordinator: "0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625",
+    keyHash:
+      "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c",
+  };
+
+  const { vrfContract } = await deployVRF(mumbai.coordinator, mumbai.keyHash);
 
   const { ticketContract } = await deployTicket(
     "Ghostie Protocal Tickets",
     "GHOSTIE",
     signer.address
   );
+
   const { coreContract } = await deployCoreContract(
     ticketContract.address,
-    VrfContract.address
+    vrfContract.address,
+    mumbai.usdtMumbai
   );
 
-  // const hash = await VrfContract.write.updateOwner([coreContract.address]);
-  // console.log({ hashUpdateVRFOwner: hash });
+  await ticketContract.write.transferOwnership([coreContract.address]);
+  await vrfContract.write.updateOwner([
+    coreContract.address,
+    coreContract.address,
+  ]);
 
   const contractAddress = {
     Tickets: ticketContract.address,
     Core: coreContract.address,
-    VRF: VrfContract.address,
+    VRF: vrfContract.address,
   };
 
   await addressUtils.saveAddresses(hre.network.name, contractAddress);
