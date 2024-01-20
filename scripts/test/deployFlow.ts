@@ -1,11 +1,11 @@
 import { formatEther, parseEther } from "viem";
 import hre from "hardhat";
-import { deployCoreContract } from "./deploy/core";
+import { deployCoreContract } from "../deploy/core";
 import { privateKeyToAccount } from "viem/accounts";
-import accountUtils from "../utils/accountUtils";
-import addressUtils from "../utils/addressUtils";
-import { deployTicket } from "./deploy/ticket";
-import { deployVRF } from "./deploy/vrf";
+import accountUtils from "../../utils/accountUtils";
+import addressUtils from "../../utils/addressUtils";
+import { deployTicket } from "../deploy/ticket";
+import { deployVRF } from "../deploy/vrf";
 
 async function main() {
   const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
@@ -22,6 +22,9 @@ async function main() {
     ticketContract.address,
     VrfContract.address
   );
+
+  // const hash = await VrfContract.write.updateOwner([coreContract.address]);
+  // console.log({ hashUpdateVRFOwner: hash });
 
   const contractAddress = {
     Tickets: ticketContract.address,

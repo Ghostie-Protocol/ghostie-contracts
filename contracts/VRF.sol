@@ -5,8 +5,9 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "./interfaces/IGhostieCore.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract VRFs is VRFConsumerBaseV2, ConfirmedOwner {
+contract VRFs is VRFConsumerBaseV2, Ownable {
     event RequestSent(uint256 requestId, uint32 numWords);
     event RequestFulfilled(uint256 requestId, uint256[] randomWords);
 
@@ -56,14 +57,12 @@ contract VRFs is VRFConsumerBaseV2, ConfirmedOwner {
      */
     constructor(
         uint64 subscriptionId
-    )
-        VRFConsumerBaseV2(0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625)
-        ConfirmedOwner(msg.sender)
-    {
+    ) VRFConsumerBaseV2(0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625) Ownable() {
         COORDINATOR = VRFCoordinatorV2Interface(
             0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
         );
         s_subscriptionId = subscriptionId;
+        transferOwnership(msg.sender);
     }
 
     function updateOwner(address coreContract) external onlyOwner {

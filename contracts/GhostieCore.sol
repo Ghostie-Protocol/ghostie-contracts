@@ -28,7 +28,7 @@ contract GhostieCores is IGhostieCore, Ownable {
         address[] match3d;
     }
 
-    struct UserLottoRound {
+    struct InvestorLottoRound {
         string[] numbers;
         uint256 totalValue;
         uint256 ticketId;
@@ -40,10 +40,12 @@ contract GhostieCores is IGhostieCore, Ownable {
     uint256 public ticketPrice;
     uint256 public roundTime;
 
-    uint8 public usdcDecimals;
+    uint256 public usdcDecimals;
 
-    mapping(uint256 => RoundDetail) rounds;
-    mapping(address => mapping(uint256 => UserLottoRound)) investorDetail;
+    mapping(uint256 => RoundDetail) public rounds;
+    mapping(address userAddr => mapping(uint256 round => uint256[])) investorTickets;
+    mapping(address userAddr => mapping(uint256 round => string[])) investorNumbers;
+    mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
 
     constructor(
         address _usdc,
@@ -57,7 +59,7 @@ contract GhostieCores is IGhostieCore, Ownable {
 
         transferOwnership(_owner);
 
-        usdcDecimals = usdc.decimals();
+        usdcDecimals = uint256(usdc.decimals());
         ticketPrice = 10 * 10 ** usdcDecimals;
         roundTime = 10 minutes;
     }
@@ -68,13 +70,15 @@ contract GhostieCores is IGhostieCore, Ownable {
     ) external onlyOwner returns (uint256) {
         RoundDetail memory _roundDetail;
 
-        if (currentRound == 0) {
-            currentRound++;
-        } else if (rounds[currentRound].endDate >= block.timestamp) {
+        if (
+            rounds[currentRound].endDate >= block.timestamp && currentRound != 0
+        ) {
             revert(
                 "Cannot start a new round, the current round has not expired."
             );
         }
+
+        currentRound++;
 
         _roundDetail.startDate = startDate;
         _roundDetail.endDate = endDate;
@@ -89,6 +93,8 @@ contract GhostieCores is IGhostieCore, Ownable {
     function closeLottoRound() external {
         uint256 requestId = vrfCore.requestRandomWords();
         rounds[currentRound].randomRequestId = requestId;
+
+        //
     }
 
     function buyTicket(string[] memory _numbers) external {
@@ -107,13 +113,15 @@ contract GhostieCores is IGhostieCore, Ownable {
         require(tokenAllowance > 0, "Approve token is not enough!");
         require(userBalance >= totalTicketPrice, "Your balance is not enough!");
 
-        usdc.transfer(address(this), totalTicketPrice);
+        usdc.transferFrom(msg.sender, address(this), totalTicketPrice);
+
+        for (uint i = 0; i < _numbers.length; i++) {
+            investorNumbers[msg.sender][currentRound].push(_numbers[i]);
+        }
 
         uint256 ticketId = ticket.mint(msg.sender, totalTicketPrice, _numbers);
-
-        investorDetail[msg.sender][currentRound].numbers = _numbers;
-        investorDetail[msg.sender][currentRound].ticketId = ticketId;
-        investorDetail[msg.sender][currentRound].totalValue = totalTicketPrice;
+        investorTickets[msg.sender][currentRound].push(ticketId);
+        investorRoundBalance[msg.sender][currentRound] += totalTicketPrice;
 
         emit BuyTicketSuccess(totalTicketPrice, currentRound, ticketId);
     }
@@ -124,39 +132,27 @@ contract GhostieCores is IGhostieCore, Ownable {
     }
 
     function cliam(uint256 round) external {
-        uint256 cliamState = rounds[round].endDate - block.timestamp;
+        uint256 cliamState = rounds[round].drawDate - block.timestamp;
 
         if (cliamState > 0) {
             // interest claim
         } else {
             // total cliam
-            string[] memory _numbers = investorDetail[msg.sender][round]
-                .numbers;
+            string[] memory _numbers = investorNumbers[msg.sender][round];
+
             RoundDetail memory roundDetail = rounds[round];
+            string memory winningNumber = roundDetail.winningNumber;
 
-            string memory match5dResult = substring(
-                roundDetail.winningNumber,
-                1,
-                6
-            );
+            string memory match5dResult = substring(winningNumber, 1, 6);
 
-            string memory match4dResult = substring(
-                roundDetail.winningNumber,
-                2,
-                6
-            );
+            string memory match4dResult = substring(winningNumber, 2, 6);
 
-            string memory match3dResult = substring(
-                roundDetail.winningNumber,
-                3,
-                6
-            );
+            string memory match3dResult = substring(winningNumber, 3, 6);
 
             for (uint i = 0; i < _numbers.length; i++) {
                 string memory number5d = substring(_numbers[i], 1, 6);
                 string memory number4d = substring(_numbers[i], 2, 6);
                 string memory number3d = substring(_numbers[i], 3, 6);
-
                 if (stringsEqual(_numbers[i], roundDetail.winningNumber)) {
                     rounds[round].matchAll.push(msg.sender);
                 } else if (stringsEqual(number5d, match5dResult)) {
