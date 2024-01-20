@@ -22,6 +22,7 @@ interface IPool {
     function withdraw(
         address asset,
         uint256 amount,
+        address handler,
         address to
     ) external returns (uint256);
 

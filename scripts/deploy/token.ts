@@ -3,22 +3,19 @@ import addressUtil from "../../utils/addressUtils";
 import accountUtils from "../../utils/accountUtils";
 import { privateKeyToAccount } from "viem/accounts";
 
-export default async function deployTicket(
+export default async function deployToken(
   name: string,
   symbol: string,
-  coreAddress: `0x${string}`
+  decimal: number
 ) {
-  const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
-
-  const contract = await hre.viem.deployContract("Tickets", [
+  const contract = await hre.viem.deployContract("Token", [
     name,
     symbol,
-    coreAddress,
-    signer.address,
+    decimal,
   ]);
 
   await addressUtil.saveAddresses(hre.network.name, {
-    Tickets: contract.address,
+    [name]: contract.address,
   });
 
   return contract;

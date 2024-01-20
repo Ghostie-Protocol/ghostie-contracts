@@ -7,6 +7,8 @@ import "./interfaces/ITickets.sol";
 pragma solidity ^0.8.20;
 
 contract Tickets is ITickets, ERC721Enumerable, Ownable {
+    uint public valueDecimal = 6;
+
     using Counters for Counters.Counter;
     Counters.Counter private _ticketIds;
 
