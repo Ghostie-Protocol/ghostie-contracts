@@ -6,6 +6,8 @@ import accountUtils from "../../utils/accountUtils";
 import addressUtils from "../../utils/addressUtils";
 import { deployTicket } from "../deploy/ticket";
 import { deployVRF } from "../deploy/vrf";
+import { deployHandler, deployMockPool, FarmConfig } from "../deploy/handler";
+import deployToken from "../deploy/token";
 
 async function main() {
   const [myWallet] = await hre.viem.getWalletClients();
@@ -41,10 +43,22 @@ async function main() {
   );
 
   await ticketContract.write.transferOwnership([coreContract.address]);
-  await vrfContract.write.updateOwner([
-    coreContract.address,
-    coreContract.address,
-  ]);
+
+  // const aToken = await deployToken("aToken", "aToken", 18); // aUSDC
+  // const mockPool = await deployMockPool(aToken.address);
+  // const borrowToken = await deployToken("borrowToken", "borrowToken", 18); // GHO
+
+  // const farmConfig: FarmConfig = {
+  //   coreContract: coreContract.address,
+  //   operator: signer.address,
+  //   poolAddress: mockPool.address,
+  //   borrowTokenAddress: borrowToken.address,
+  //   aTokenAddress: aToken.address,
+  //   tokenAddress: mumbai.usdtMumbai,
+  //   ticketAddress: ticketContract.address,
+  // };
+
+  // const handler = await deployHandler(farmConfig);
 
   const contractAddress = {
     Tickets: ticketContract.address,

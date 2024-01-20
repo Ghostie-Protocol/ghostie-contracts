@@ -1,4 +1,4 @@
-import deployTicket from "../deploy/ticket";
+import { deployTicket } from "../deploy/ticket";
 import accountUtils from "../../utils/accountUtils";
 import { privateKeyToAccount } from "viem/accounts";
 import { deployHandler, deployMockPool } from "../deploy/handler";
@@ -20,7 +20,7 @@ export default async function main() {
   const mockPool = await deployMockPool(aToken.address);
   console.log("mockPool.address >>> ", mockPool.address);
 
-  const ticket = await deployTicket(
+  const { ticketContract: ticket } = await deployTicket(
     "Ghostie Protocal Tickets",
     "GHOSTIE",
     signer.address
