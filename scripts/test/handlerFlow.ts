@@ -8,14 +8,14 @@ import deployToken from "../deploy/token";
 const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
 
 export default async function main() {
-  const token = await deployToken("token", "token", 18); // USDC
-  console.log("token.address >>> ", token.address);
+  const token = await deployToken("USDC", "USDC", 18); // USDC
+  console.log("USDC.address >>> ", token.address);
 
-  const aToken = await deployToken("aToken", "aToken", 18); // aUSDC
-  console.log("aToken.address >>> ", aToken.address);
+  const aToken = await deployToken("aUSDC", "aUSDC", 18); // aUSDC
+  console.log("aUSDC.address >>> ", aToken.address);
 
-  const borrowToken = await deployToken("borrowToken", "borrowToken", 18); // GHO
-  console.log("borrowToken.address >>> ", borrowToken.address);
+  const borrowToken = await deployToken("GHO", "GHO", 18); // GHO
+  console.log("GHO.address >>> ", borrowToken.address);
 
   const mockPool = await deployMockPool(aToken.address);
   console.log("mockPool.address >>> ", mockPool.address);

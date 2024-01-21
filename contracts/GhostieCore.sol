@@ -131,7 +131,7 @@ contract GhostieCore is IGhostieCore, Ownable {
         return (currentRound);
     }
 
-    function closeLottoRound() external {
+    function closeLottoRound() external onlyOwner {
         RoundDetail memory _roundDetail = rounds[currentRound];
         require(
             _roundDetail.endDate <= block.timestamp,
@@ -156,6 +156,8 @@ contract GhostieCore is IGhostieCore, Ownable {
             "Not at the time of ticket purchase"
         );
 
+        require(address(handler) != address(0), "Handler not defind!");
+
         uint256 tokenAllowance = usdc.allowance(msg.sender, address(this));
         uint256 userBalance = usdc.balanceOf(msg.sender);
         uint256 totalTicketPrice = _numbers.length * ticketPrice;
@@ -163,7 +165,7 @@ contract GhostieCore is IGhostieCore, Ownable {
         require(tokenAllowance > 0, "Approve token is not enough!");
         require(userBalance >= totalTicketPrice, "Your balance is not enough!");
 
-        usdc.transferFrom(msg.sender, address(this), totalTicketPrice);
+        usdc.transferFrom(msg.sender, address(handler), totalTicketPrice);
 
         uint256 ticketId = ticket.mint(msg.sender, totalTicketPrice, _numbers);
         investorTickets[msg.sender][currentRound].push(ticketId);
@@ -179,17 +181,27 @@ contract GhostieCore is IGhostieCore, Ownable {
             totalInvestor[currentRound].push(msg.sender);
         }
 
-        emit BuyTicketSuccess(totalTicketPrice, currentRound, ticketId);
+        emit BuyTicketSuccess(
+            msg.sender,
+            totalTicketPrice,
+            currentRound,
+            ticketId
+        );
     }
 
-    function updateWinningNumber(uint256 winningNumber) external {
+    modifier onlyVRF() {
+        require(address(msg.sender) == address(vrfCore));
+        _;
+    }
+
+    function updateWinningNumber(uint256 winningNumber) external onlyVRF {
         string memory winNumber = uint256ToString(winningNumber);
 
         winNumber = zeroDigit(winNumber);
         rounds[currentRound].winningNumber = winNumber;
     }
 
-    function updateHandlerContract(address handlerAddress) external {
+    function updateHandlerContract(address handlerAddress) external onlyOwner {
         handler = IHandler(handlerAddress);
     }
 
@@ -255,7 +267,7 @@ contract GhostieCore is IGhostieCore, Ownable {
                 }
             }
 
-            handler.withdraw(_ticketId, msg.sender, totalShare);
+            handler.withdraw(round, _ticketId, msg.sender, totalShare);
         }
     }
 
@@ -295,6 +307,15 @@ contract GhostieCore is IGhostieCore, Ownable {
         }
 
         rounds[currentRound].isCalWinner = true;
+    }
+
+    function borrow(
+        uint256 _round,
+        uint256 _ticketId,
+        address _borrower,
+        uint256 _amount
+    ) external {
+        handler.borrow(_round, _ticketId, _borrower, _amount);
     }
 
     function calWinnerPrice(
@@ -363,11 +384,21 @@ contract GhostieCore is IGhostieCore, Ownable {
         return allHistory;
     }
 
-    function forceUpdate(string memory fouceWinner, uint256 round) external {
+    function forceUpdate(
+        string memory fouceWinner,
+        uint256 round
+    ) external onlyOwner {
         rounds[round].winningNumber = fouceWinner;
     }
 
-    function getTicketsPerRound(
+    function getTicket(
+        uint256 round,
+        uint256 ticketId
+    ) external view returns (WinnerDetail[] memory) {
+        return roundWinner[round][ticketId];
+    }
+
+    function getAllTicketsPerRound(
         uint256 round
     ) external view returns (UserTicketDetail[] memory) {
         uint256[] memory tickets = investorTickets[msg.sender][round];

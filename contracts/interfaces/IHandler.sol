@@ -13,7 +13,8 @@ interface IHandler {
         address ticketAddress;
     }
 
-    event Farm(uint256 _round, address _poolAddress, uint256 _amount);
+    event Farm(uint256 indexed _round, address _poolAddress, uint256 _amount);
+    event Claim(uint256 indexed _round, uint256 indexed _ticketId, address _to);
 
     function getTicketYield(
         uint256 _round,
@@ -24,5 +25,17 @@ interface IHandler {
 
     function claim(uint256 _round, uint256 _ticketId, address _to) external;
 
-    function withdraw(uint256 _ticketId, address _to, uint256 share) external;
+    function withdraw(
+        uint256 _round,
+        uint256 _ticketId,
+        address _to,
+        uint256 _prize
+    ) external;
+
+    function borrow(
+        uint256 _round,
+        uint256 _ticketId,
+        address _borrower,
+        uint256 _amount
+    ) external;
 }
