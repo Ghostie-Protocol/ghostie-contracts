@@ -7,22 +7,25 @@ import "./interfaces/ITickets.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
+import "hardhat/console.sol";
+
 pragma solidity ^0.8.20;
 
 contract Handler is IHandler, Ownable {
     using SafeMath for uint256;
     address private operator;
 
-    address public poolAddress; //AAVE V3 POOL
+    address public poolAddress; //AAVE V3 POOL (MOCK)
     address public borrowTokenAddress; //GHO
     address public aTokenAddress; //aUSDC
     address public tokenAddress; //USDC
-    address private ticketAddress;
+    address public ticketAddress; // ERC721
 
+    uint256 public preYieldSupply;
     mapping(uint256 => uint256) private ticketDept;
     mapping(uint256 => uint256) private ticketClaimed;
+    mapping(uint256 => uint256) private ticketWithdrawed;
     mapping(uint256 => uint256) private ticketClaimeStamp;
-    // mapping(uint256 => address) private farmContract;
     mapping(uint256 => uint256) private farmAmount;
 
     constructor(FarmConfig memory _farmConfig) Ownable() {
@@ -74,6 +77,12 @@ contract Handler is IHandler, Ownable {
         }
     }
 
+    function addPreYieldSupply(uint256 _amount) public onlyOperator {
+        require(_amount > 0, "Supply amount must more than 0");
+        IERC20(tokenAddress).transferFrom(msg.sender, address(this), _amount);
+        preYieldSupply = _amount;
+    }
+
     function farm(uint256 _round, uint256 _amount) public onlyOwner {
         require(_amount > 0, "Farm amount must more than 0");
         farmAmount[_round] = _amount;
@@ -101,15 +110,27 @@ contract Handler is IHandler, Ownable {
         );
     }
 
-    function withdraw(uint256 _ticketId, address _to) public onlyOwner {
+    function withdraw(
+        uint256 _round,
+        uint256 _ticketId,
+        address _to,
+        uint256 _prize
+    ) public onlyOwner {
         uint256 ticketValue = ITickets(ticketAddress).getTicketValue(_ticketId);
         require(ticketValue > 0, "This ticket's value is 0 or invalid ID");
 
-        ticketClaimed[_ticketId] += ticketValue;
-        IERC20(aTokenAddress).approve(poolAddress, ticketValue);
+        uint256 aBalance = IERC20(aTokenAddress).balanceOf(address(this));
+        uint256 farmAmount_ = farmAmount[_round];
+        uint256 prizePool = (aBalance.sub(farmAmount_)).mul(4).div(5); // 80%
+
+        uint256 winPrize = prizePool.mul(_prize).div(10 ** 6);
+        uint256 withdrawAmount = ticketValue.add(winPrize);
+
+        ticketWithdrawed[_ticketId] += withdrawAmount;
+        IERC20(aTokenAddress).approve(poolAddress, withdrawAmount);
         IPool(poolAddress).withdraw(
             tokenAddress,
-            ticketValue,
+            withdrawAmount,
             address(this),
             _to
         );
