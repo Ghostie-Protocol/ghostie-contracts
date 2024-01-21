@@ -79,7 +79,7 @@ contract VRF is VRFConsumerBaseV2, Ownable {
         keyHash = _keyHash;
     }
 
-    function updateOwner(address coreContract, address owner) external {
+    function updateOwner(address coreContract, address owner) public {
         transferOwnership(owner);
         ghostieCore = IGhostieCore(coreContract);
     }

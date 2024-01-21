@@ -35,27 +35,6 @@ contract GhostieCore is IGhostieCore, Ownable {
         address[] match3d;
     }
 
-    struct HistoryDetail {
-        uint256 round;
-        uint256 startDate;
-        uint256 endDate;
-        uint256 drawDate;
-        uint256 pricePot;
-        uint256 totalYourTicket;
-        string winningNumber;
-        address[] matchAll;
-        address[] match5d;
-        address[] match4d;
-        address[] match3d;
-    }
-
-    struct UserTicketDetail {
-        uint256 ticketId;
-        string[] numbers;
-        WinnerPrice[] winnerType;
-        uint256 totalBalance;
-    }
-
     receive() external payable {}
 
     uint256 public currentRound;
@@ -65,26 +44,13 @@ contract GhostieCore is IGhostieCore, Ownable {
 
     mapping(uint256 => RoundDetail) public rounds;
 
-    enum WinnerPrice {
-        JACKPOT,
-        LAST_FIVE_DIGITS,
-        LAST_FOUR_DIGITS,
-        LAST_THREE_DIGITS,
-        ZERO
-    }
-
-    struct WinnerDetail {
-        string number;
-        WinnerPrice winnerType;
-        address investorAddress;
-        bool isClaim;
-    }
-
     mapping(uint256 round => address[]) totalInvestor;
     mapping(uint256 round => mapping(address => bool)) isRoundInvestor;
     mapping(uint256 round => mapping(uint256 ticketId => WinnerDetail[])) roundWinner;
 
     mapping(address userAddr => mapping(uint256 round => uint256[])) investorTickets;
+    mapping(address userAddr => mapping(uint256 round => mapping(uint256 ticketId => uint256 totalWin)))
+        public ticketTotalWinShare;
     mapping(address userAddr => mapping(uint256 round => mapping(uint256 => string[]))) numbersOfTicket;
     mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
 
@@ -205,6 +171,15 @@ contract GhostieCore is IGhostieCore, Ownable {
         handler = IHandler(handlerAddress);
     }
 
+    function borrow(
+        uint256 _round,
+        uint256 _ticketId,
+        address _borrower,
+        uint256 _amount
+    ) external {
+        // handler.borrow(_round, _ticketId, _borrower, _amount);
+    }
+
     function claim(uint256 round, uint256 _ticketId) external {
         uint256 cliamState = rounds[round].drawDate - block.timestamp;
 
@@ -214,58 +189,17 @@ contract GhostieCore is IGhostieCore, Ownable {
         );
 
         if (cliamState > 0) {
-            // interest claim
             handler.claim(round, _ticketId, msg.sender);
         } else {
-            // total cliam
             RoundDetail memory _round = rounds[round];
             require(
                 _round.isCalWinner,
                 "Still cannot withdraw The system is processing the winnings."
             );
 
-            uint256 multiplier = 10000;
-
-            address[] memory matchAll = _round.matchAll;
-            address[] memory match5d = _round.match5d;
-            address[] memory match4d = _round.match4d;
-            address[] memory match3d = _round.match3d;
-
-            uint256 jackpotShare = uint256(70)
-                .div(100)
-                .div(matchAll.length)
-                .mul(multiplier);
-            uint256 last5dShare = uint256(15).div(100).div(match5d.length).mul(
-                multiplier
-            );
-            uint256 last4dShare = uint256(10).div(100).div(match4d.length).mul(
-                multiplier
-            );
-            uint256 last3dShare = uint256(5).div(100).div(match3d.length).mul(
-                multiplier
-            );
-
-            WinnerDetail[] memory numbers = roundWinner[round][_ticketId];
-
-            uint256 totalShare;
-
-            for (uint i = 0; i < numbers.length; i++) {
-                if (!numbers[i].isClaim) {
-                    if (numbers[i].winnerType == WinnerPrice.JACKPOT)
-                        totalShare += jackpotShare;
-                    else if (
-                        numbers[i].winnerType == WinnerPrice.LAST_FIVE_DIGITS
-                    ) totalShare += last5dShare;
-                    else if (
-                        numbers[i].winnerType == WinnerPrice.LAST_FOUR_DIGITS
-                    ) totalShare += last4dShare;
-                    else if (
-                        numbers[i].winnerType == WinnerPrice.LAST_FOUR_DIGITS
-                    ) totalShare += last3dShare;
-
-                    roundWinner[round][_ticketId][i].isClaim = true;
-                }
-            }
+            uint256 totalShare = ticketTotalWinShare[msg.sender][round][
+                _ticketId
+            ];
 
             handler.withdraw(round, _ticketId, msg.sender, totalShare);
         }
@@ -307,15 +241,84 @@ contract GhostieCore is IGhostieCore, Ownable {
         }
 
         rounds[currentRound].isCalWinner = true;
+
+        address[] memory matchAll = roundDetail.matchAll;
+        address[] memory match5d = roundDetail.match5d;
+        address[] memory match4d = roundDetail.match4d;
+        address[] memory match3d = roundDetail.match3d;
+
+        uint256 jackpotShare = uint256(70).div(100).div(matchAll.length).mul(
+            10000
+        );
+        uint256 last5dShare = uint256(15).div(100).div(match5d.length).mul(
+            10000
+        );
+        uint256 last4dShare = uint256(10).div(100).div(match4d.length).mul(
+            10000
+        );
+        uint256 last3dShare = uint256(5).div(100).div(match3d.length).mul(
+            10000
+        );
+
+        for (uint i = 0; i < investors.length; i++) {
+            address currInvertor = investors[i];
+
+            uint256[] memory tickets = investorTickets[currInvertor][
+                currentRound
+            ];
+
+            for (uint j = 0; j < tickets.length; j++) {
+                uint256 ticketId = tickets[j];
+                WinnerDetail[] memory numbers = roundWinner[currentRound][
+                    ticketId
+                ];
+
+                uint256 totalWin = calulateTicketShareWinPrice(
+                    numbers,
+                    jackpotShare,
+                    last5dShare,
+                    last4dShare,
+                    last3dShare,
+                    currentRound,
+                    ticketId
+                );
+
+                ticketTotalWinShare[currInvertor][currentRound][
+                    ticketId
+                ] = totalWin;
+            }
+        }
     }
 
-    function borrow(
-        uint256 _round,
-        uint256 _ticketId,
-        address _borrower,
-        uint256 _amount
-    ) external {
-        handler.borrow(_round, _ticketId, _borrower, _amount);
+    function calulateTicketShareWinPrice(
+        WinnerDetail[] memory numbers,
+        uint256 jackpotShare,
+        uint256 last5dShare,
+        uint256 last4dShare,
+        uint256 last3dShare,
+        uint256 round,
+        uint256 _ticketId
+    ) internal returns (uint256) {
+        uint256 totalShare;
+
+        for (uint i = 0; i < numbers.length; i++) {
+            uint256 numberShare;
+            if (numbers[i].winnerType == WinnerPrice.JACKPOT) {
+                numberShare = jackpotShare;
+            } else if (numbers[i].winnerType == WinnerPrice.LAST_FIVE_DIGITS) {
+                numberShare = last5dShare;
+            } else if (numbers[i].winnerType == WinnerPrice.LAST_FOUR_DIGITS) {
+                numberShare = last4dShare;
+            } else if (numbers[i].winnerType == WinnerPrice.LAST_THREE_DIGITS) {
+                numberShare = last3dShare;
+            } else {
+                numberShare = 0;
+            }
+            roundWinner[round][_ticketId][i].share = numberShare;
+            totalShare += numberShare;
+        }
+
+        return totalShare;
     }
 
     function calWinnerPrice(
@@ -336,7 +339,6 @@ contract GhostieCore is IGhostieCore, Ownable {
 
             winnerDetail.investorAddress = sender;
             winnerDetail.number = _numbers[k];
-            // winnerDetail.ticketId = ticketId;
 
             if (stringsEqual(_numbers[k], jackpotResult)) {
                 rounds[currentRound].matchAll.push(sender);

@@ -44,26 +44,28 @@ async function main() {
 
   await ticketContract.write.transferOwnership([coreContract.address]);
 
-  // const aToken = await deployToken("aToken", "aToken", 18); // aUSDC
-  // const mockPool = await deployMockPool(aToken.address);
-  // const borrowToken = await deployToken("borrowToken", "borrowToken", 18); // GHO
+  const usdc = await deployToken("USDC", "USDC", 18); // USDC
+  const aUSDC = await deployToken("aUSDC", "aUSDC", 18); // aUSDC
+  const GHO = await deployToken("GHO", "GHO", 18); // GHO
 
-  // const farmConfig: FarmConfig = {
-  //   coreContract: coreContract.address,
-  //   operator: signer.address,
-  //   poolAddress: mockPool.address,
-  //   borrowTokenAddress: borrowToken.address,
-  //   aTokenAddress: aToken.address,
-  //   tokenAddress: mumbai.usdtMumbai,
-  //   ticketAddress: ticketContract.address,
-  // };
+  const mockPool = await deployMockPool(aUSDC.address);
 
-  // const handler = await deployHandler(farmConfig);
+  const farmConfig: FarmConfig = {
+    coreContract: coreContract.address,
+    operator: signer.address,
+    poolAddress: mockPool.address,
+    borrowTokenAddress: GHO.address,
+    aTokenAddress: aUSDC.address,
+    tokenAddress: usdc.address,
+    ticketAddress: ticketContract.address,
+  };
+
+  const handler = await deployHandler(farmConfig);
 
   const contractAddress = {
-    Tickets: ticketContract.address,
-    Core: coreContract.address,
-    VRF: vrfContract.address,
+    ...farmConfig,
+    handlerAddress: handler.address,
+    vrfAddress: vrfContract.address,
   };
 
   await addressUtils.saveAddresses(hre.network.name, contractAddress);

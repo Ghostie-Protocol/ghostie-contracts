@@ -28,6 +28,7 @@ interface IGhostieCore {
         string number;
         WinnerPrice winnerType;
         address investorAddress;
+        uint256 share;
         bool isClaim;
     }
 
@@ -85,4 +86,6 @@ interface IGhostieCore {
     function getAllTicketsPerRound(
         uint256 round
     ) external view returns (UserTicketDetail[] memory);
+
+    function updateWinningNumber(uint256 winningNumber) external;
 }

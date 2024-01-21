@@ -31,11 +31,4 @@ interface IHandler {
         address _to,
         uint256 _prize
     ) external;
-
-    function borrow(
-        uint256 _round,
-        uint256 _ticketId,
-        address _borrower,
-        uint256 _amount
-    ) external;
 }
