@@ -1,8 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
 interface IVRF {
-    function requestRandomWords() external returns (uint256 requestId);
+    function requestRandomWords(
+        uint256 round
+    ) external returns (uint256 requestId);
 
     function getRequestStatus(
         uint256 _requestId

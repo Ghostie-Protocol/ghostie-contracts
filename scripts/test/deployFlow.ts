@@ -29,21 +29,21 @@ async function main() {
   };
 
   const usdc = await deployToken("USDC", "USDC", 18); // USDC
-  console.log("======> usdc pass");
+  console.log("======> usdc pass", usdc.address);
   const aUSDC = await deployToken("aUSDC", "aUSDC", 18); // aUSDC
-  console.log("======> aUSDC pass");
+  console.log("======> aUSDC pass", aUSDC.address);
   const GHO = await deployToken("GHO", "GHO", 18); // GHO
-  console.log("======> GHO pass");
+  console.log("======> GHO pass", GHO.address);
 
   const { vrfContract } = await deployVRF(mumbai.coordinator, mumbai.keyHash);
-  console.log("======> VRF pass");
+  console.log("======> VRF pass", vrfContract.address);
 
   const { ticketContract } = await deployTicket(
     "Ghostie Protocal Tickets",
     "GHOSTIE",
     signer.address
   );
-  console.log("======> Ticket pass");
+  console.log("======> Ticket pass", ticketContract.address);
 
   const { coreContract } = await deployCoreContract(
     ticketContract.address,
@@ -51,12 +51,13 @@ async function main() {
     usdc.address,
     GHO.address
   );
-  console.log("======> Core pass");
+  console.log("======> Core pass", coreContract.address);
 
   await ticketContract.write.transferOwnership([coreContract.address]);
+  console.log("======> transferOwnership pass");
 
   const mockPool = await deployMockPool(aUSDC.address);
-  console.log("======> Pool pass");
+  console.log("======> Pool pass", mockPool.address);
 
   const farmConfig: FarmConfig = {
     coreContract: coreContract.address,
@@ -70,12 +71,15 @@ async function main() {
 
   const handler = await deployHandler(farmConfig);
 
-  console.log("======> Handler pass");
+  console.log("======> Handler pass", handler.address);
 
   const contractAddress = {
-    ...farmConfig,
+    usdcAddress: usdc.address,
+    aUSDCAddress: aUSDC.address,
+    ghoAddress: GHO.address,
     handlerAddress: handler.address,
     vrfAddress: vrfContract.address,
+    ...farmConfig,
   };
 
   await addressUtils.saveAddresses(hre.network.name, contractAddress);

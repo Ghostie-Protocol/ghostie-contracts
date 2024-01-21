@@ -14,25 +14,13 @@ export interface FarmConfig {
 }
 
 export async function deployHandler(farmconfig: FarmConfig) {
-  const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
-
   const contract = await hre.viem.deployContract("Handler", [farmconfig]);
-
-  await addressUtil.saveAddresses(hre.network.name, {
-    Handler: contract.address,
-  });
 
   return contract;
 }
 
 export async function deployMockPool(aTokenAddress: `0x${string}`) {
-  const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
-
   const contract = await hre.viem.deployContract("MockPool", [aTokenAddress]);
-
-  await addressUtil.saveAddresses(hre.network.name, {
-    MockPool: contract.address,
-  });
 
   return contract;
 }

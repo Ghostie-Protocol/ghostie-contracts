@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
 interface IGhostieCore {
@@ -15,9 +15,12 @@ interface IGhostieCore {
         uint256 startDate;
         uint256 endDate;
         uint256 drawDate;
-        uint256 pricePot;
+        uint256 prizePot;
         uint256 totalYourTicket;
         string winningNumber;
+        uint256 ticketAmount;
+        uint256 totalPlayer;
+        uint256 totalBalance;
         address[] matchAll;
         address[] match5d;
         address[] match4d;
@@ -40,24 +43,29 @@ interface IGhostieCore {
     }
 
     event BuyTicketSuccess(
-        address userAddress,
+        address indexed userAddress,
         uint256 totalPrice,
         uint256 round,
         uint256 ticketId
     );
-
+    event BorrowSuccess(address indexed userAddress, uint256 amount);
+    event RepaySuccess(address indexed userAddress);
     event StartNewRound(
+        address indexed adminAddress,
         uint256 currentRound,
         uint256 startDate,
         uint256 endDate
     );
+    event CloseRound(address indexed adminAddress, uint256 closeRound);
+    event UpdateWinnigNumber(address indexed vrfAddress);
+    event ClaimSuccess(address indexed userAddress, uint256 ticketId);
 
     function startLottoRound(
         uint256 startDate,
         uint256 endDate
     ) external returns (uint256);
 
-    function closeLottoRound() external;
+    function closeLottoRound(uint256 round) external;
 
     function buyTicket(string[] memory _numbers) external;
 
@@ -65,7 +73,7 @@ interface IGhostieCore {
 
     function claim(uint256 round, uint256 _ticketId) external;
 
-    function checkWinningDrawPrice() external;
+    function checkWinningDrawPrice(uint256 _round) external;
 
     function borrow(
         uint256 _round,
@@ -86,5 +94,5 @@ interface IGhostieCore {
         uint256 round
     ) external view returns (UserTicketDetail[] memory);
 
-    function updateWinningNumber(uint256 winningNumber) external;
+    function updateWinningNumber(uint256 winningNumber, uint256 round) external;
 }

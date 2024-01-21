@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IHandler.sol";
 import "./interfaces/IPool.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/ITickets.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 pragma solidity ^0.8.20;
 

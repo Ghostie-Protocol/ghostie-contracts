@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-verify";
 import "@nomicfoundation/hardhat-viem";
 import accountUtils from "./utils/accountUtils";
+import { parseEther } from "viem";
 
 const config: HardhatUserConfig = {
   etherscan: {
@@ -43,6 +44,7 @@ const config: HardhatUserConfig = {
     mumbai: {
       url: "https://polygon-mumbai-bor.publicnode.com",
       accounts: accountUtils.getAccounts(),
+      gasPrice: 35000000000,
     },
     fuji: {
       url: "https://avalanche-fuji-c-chain.publicnode.com",

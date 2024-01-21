@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
@@ -15,6 +15,7 @@ contract VRF is VRFConsumerBaseV2, Ownable {
         bool fulfilled; // whether the request has been successfully fulfilled
         bool exists; // whether a requestId exists
         uint256[] randomWords;
+        uint256 round;
     }
 
     mapping(uint256 => RequestStatus)
@@ -89,11 +90,9 @@ contract VRF is VRFConsumerBaseV2, Ownable {
     }
 
     // Assumes the subscription is funded sufficiently.
-    function requestRandomWords()
-        external
-        onlyOwner
-        returns (uint256 requestId)
-    {
+    function requestRandomWords(
+        uint256 round
+    ) external onlyOwner returns (uint256 requestId) {
         // Will revert if subscription is not set and funded.
         requestId = COORDINATOR.requestRandomWords(
             keyHash,
@@ -105,7 +104,8 @@ contract VRF is VRFConsumerBaseV2, Ownable {
         s_requests[requestId] = RequestStatus({
             randomWords: new uint256[](0),
             exists: true,
-            fulfilled: false
+            fulfilled: false,
+            round: round
         });
         requestIds.push(requestId);
         lastRequestId = requestId;
@@ -122,8 +122,9 @@ contract VRF is VRFConsumerBaseV2, Ownable {
         s_requests[_requestId].randomWords = _randomWords;
 
         uint256 winningNumber = _randomWords[0] % 999999;
+        uint256 round = s_requests[_requestId].round;
 
-        ghostieCore.updateWinningNumber(winningNumber);
+        ghostieCore.updateWinningNumber(winningNumber, round);
 
         emit RequestFulfilled(_requestId, _randomWords);
     }
