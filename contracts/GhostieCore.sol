@@ -48,17 +48,21 @@ contract GhostieCore is IGhostieCore, Ownable {
 
     mapping(uint256 => RoundDetail) public rounds;
 
-    mapping(uint256 round => address[]) totalInvestor;
-    mapping(uint256 round => mapping(address => bool)) isRoundInvestor;
-    mapping(uint256 round => mapping(uint256 ticketId => WinnerDetail[])) roundWinner;
+    mapping(uint256 round => address[]) public totalInvestor;
+    mapping(uint256 round => mapping(address => bool)) public isRoundInvestor;
+    mapping(uint256 round => mapping(uint256 ticketId => WinnerDetail[]))
+        public roundWinner;
 
-    mapping(address userAddr => mapping(uint256 round => uint256[])) investorTickets;
+    mapping(address userAddr => mapping(uint256 round => uint256[]))
+        public investorTickets;
     mapping(address userAddr => mapping(uint256 round => mapping(uint256 ticketId => uint256 totalWin)))
         public ticketTotalWinShare;
     mapping(address userAddr => mapping(uint256 round => mapping(uint256 ticketId => bool isClaim)))
         public isClaimTotalWinShare;
-    mapping(address userAddr => mapping(uint256 round => mapping(uint256 => string[]))) numbersOfTicket;
-    mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
+    mapping(address userAddr => mapping(uint256 round => mapping(uint256 => string[])))
+        public numbersOfTicket;
+    mapping(address userAddr => mapping(uint256 round => uint256))
+        public investorRoundBalance;
 
     constructor(
         address _usdc,
@@ -91,13 +95,6 @@ contract GhostieCore is IGhostieCore, Ownable {
         ) {
             revert(
                 "Cannot start a new round, the current round has not expired."
-            );
-        }
-
-        if (currentRound > 0) {
-            require(
-                rounds[currentRound].isCalWinner,
-                "Should be calculate winner round!"
             );
         }
 
@@ -146,6 +143,10 @@ contract GhostieCore is IGhostieCore, Ownable {
         rounds[round].randomRequestId = requestId;
 
         emit CloseRound(msg.sender, round);
+    }
+
+    function forceUpdateRound(uint256 round) external onlyOwner {
+        currentRound = round;
     }
 
     function buyTicket(string[] memory _numbers) external {
@@ -361,7 +362,6 @@ contract GhostieCore is IGhostieCore, Ownable {
                     last5dShare,
                     last4dShare,
                     last3dShare,
-                    currentRound,
                     ticketId
                 );
 
@@ -378,7 +378,6 @@ contract GhostieCore is IGhostieCore, Ownable {
         uint256 last5dShare,
         uint256 last4dShare,
         uint256 last3dShare,
-        uint256 round,
         uint256 _ticketId
     ) internal returns (uint256) {
         uint256 totalShare;
@@ -396,7 +395,7 @@ contract GhostieCore is IGhostieCore, Ownable {
             } else {
                 numberShare = 0;
             }
-            roundWinner[round][_ticketId][i].share = numberShare;
+            roundWinner[currentRound][_ticketId][i].share = numberShare;
             totalShare += numberShare;
         }
 
