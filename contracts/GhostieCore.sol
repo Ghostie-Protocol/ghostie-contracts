@@ -9,9 +9,11 @@ import "./interfaces/IHandler.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract GhostieCore is IGhostieCore, Ownable {
     using Strings for string;
+    using SafeMath for uint256;
 
     IVRF private vrfCore;
     IERC20 immutable usdc;
@@ -72,20 +74,18 @@ contract GhostieCore is IGhostieCore, Ownable {
     }
 
     struct WinnerDetail {
-        uint256 ticketId;
         string number;
         WinnerPrice winnerType;
         address investorAddress;
+        bool isClaim;
     }
 
     mapping(uint256 round => address[]) totalInvestor;
     mapping(uint256 round => mapping(address => bool)) isRoundInvestor;
-    mapping(uint256 round => WinnerDetail[]) roundWinner;
+    mapping(uint256 round => mapping(uint256 ticketId => WinnerDetail[])) roundWinner;
 
     mapping(address userAddr => mapping(uint256 round => uint256[])) investorTickets;
-    // mapping(address userAddr => mapping(uint256 round => string[])) investorNumbers;
     mapping(address userAddr => mapping(uint256 round => mapping(uint256 => string[]))) numbersOfTicket;
-    // mapping(address userAddr => mapping(uint256 round => mapping(uint256 => WinnerPrice[]))) numbersWinType;
     mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
 
     constructor(address _usdc, address _ticket, address _vrfAddress) Ownable() {
@@ -187,8 +187,6 @@ contract GhostieCore is IGhostieCore, Ownable {
 
         winNumber = zeroDigit(winNumber);
         rounds[currentRound].winningNumber = winNumber;
-
-        // checkWinningDrawPrice();
     }
 
     function updateHandlerContract(address handlerAddress) external {
@@ -209,26 +207,55 @@ contract GhostieCore is IGhostieCore, Ownable {
         } else {
             // total cliam
             RoundDetail memory _round = rounds[round];
+            require(
+                _round.isCalWinner,
+                "Still cannot withdraw The system is processing the winnings."
+            );
+
+            uint256 multiplier = 10000;
 
             address[] memory matchAll = _round.matchAll;
             address[] memory match5d = _round.match5d;
             address[] memory match4d = _round.match4d;
             address[] memory match3d = _round.match3d;
 
-            for (uint i = 0; i < matchAll.length; i++) {
-                if (matchAll[i] == msg.sender) {
-                    handler.withdraw(_ticketId, msg.sender);
+            uint256 jackpotShare = uint256(70)
+                .div(100)
+                .div(matchAll.length)
+                .mul(multiplier);
+            uint256 last5dShare = uint256(15).div(100).div(match5d.length).mul(
+                multiplier
+            );
+            uint256 last4dShare = uint256(10).div(100).div(match4d.length).mul(
+                multiplier
+            );
+            uint256 last3dShare = uint256(5).div(100).div(match3d.length).mul(
+                multiplier
+            );
+
+            WinnerDetail[] memory numbers = roundWinner[round][_ticketId];
+
+            uint256 totalShare;
+
+            for (uint i = 0; i < numbers.length; i++) {
+                if (!numbers[i].isClaim) {
+                    if (numbers[i].winnerType == WinnerPrice.JACKPOT)
+                        totalShare += jackpotShare;
+                    else if (
+                        numbers[i].winnerType == WinnerPrice.LAST_FIVE_DIGITS
+                    ) totalShare += last5dShare;
+                    else if (
+                        numbers[i].winnerType == WinnerPrice.LAST_FOUR_DIGITS
+                    ) totalShare += last4dShare;
+                    else if (
+                        numbers[i].winnerType == WinnerPrice.LAST_FOUR_DIGITS
+                    ) totalShare += last3dShare;
+
+                    roundWinner[round][_ticketId][i].isClaim = true;
                 }
             }
-            for (uint i = 0; i < match5d.length; i++) {
-                if (match5d[i] == msg.sender) {}
-            }
-            for (uint i = 0; i < match4d.length; i++) {
-                if (match4d[i] == msg.sender) {}
-            }
-            for (uint i = 0; i < match3d.length; i++) {
-                if (match3d[i] == msg.sender) {}
-            }
+
+            handler.withdraw(_ticketId, msg.sender, totalShare);
         }
     }
 
@@ -255,13 +282,8 @@ contract GhostieCore is IGhostieCore, Ownable {
                     currentRound
                 ][ticketId];
 
-                // WinnerPrice[] memory winTypes = new WinnerPrice[](
-                //     numbersWinType[currInvertor][currentRound][ticketId].length
-                // );
-
                 calWinnerPrice(
                     _numbers,
-                    // winTypes,
                     jackpotResult,
                     match5dResult,
                     match4dResult,
@@ -271,11 +293,12 @@ contract GhostieCore is IGhostieCore, Ownable {
                 );
             }
         }
+
+        rounds[currentRound].isCalWinner = true;
     }
 
     function calWinnerPrice(
         string[] memory _numbers,
-        // WinnerPrice[] memory winTypes,
         string memory jackpotResult,
         string memory match5dResult,
         string memory match4dResult,
@@ -292,38 +315,26 @@ contract GhostieCore is IGhostieCore, Ownable {
 
             winnerDetail.investorAddress = sender;
             winnerDetail.number = _numbers[k];
-            winnerDetail.ticketId = ticketId;
+            // winnerDetail.ticketId = ticketId;
 
             if (stringsEqual(_numbers[k], jackpotResult)) {
                 rounds[currentRound].matchAll.push(sender);
                 winnerDetail.winnerType = WinnerPrice.JACKPOT;
-
-                // winTypes[k] = WinnerPrice.JACKPOT;
             } else if (stringsEqual(number5d, match5dResult)) {
                 rounds[currentRound].match5d.push(sender);
                 winnerDetail.winnerType = WinnerPrice.LAST_FIVE_DIGITS;
-
-                // winTypes[k] = WinnerPrice.LAST_FIVE_DIGITS;
             } else if (stringsEqual(number4d, match4dResult)) {
                 rounds[currentRound].match4d.push(sender);
                 winnerDetail.winnerType = WinnerPrice.LAST_FOUR_DIGITS;
-
-                // winTypes[k] = WinnerPrice.LAST_FOUR_DIGITS;
             } else if (stringsEqual(number3d, match3dResult)) {
                 rounds[currentRound].match3d.push(sender);
                 winnerDetail.winnerType = WinnerPrice.LAST_THREE_DIGITS;
-
-                // winTypes[k] = WinnerPrice.LAST_THREE_DIGITS;
             } else {
                 winnerDetail.winnerType = WinnerPrice.ZERO;
-
-                // winTypes[k] = WinnerPrice.ZERO;
             }
 
-            roundWinner[currentRound].push(winnerDetail);
+            roundWinner[currentRound][ticketId].push(winnerDetail);
         }
-
-        // numbersWinType[sender][currentRound][ticketId] = winTypes;
     }
 
     function history() external view returns (HistoryDetail[] memory) {
@@ -352,6 +363,10 @@ contract GhostieCore is IGhostieCore, Ownable {
         return allHistory;
     }
 
+    function forceUpdate(string memory fouceWinner, uint256 round) external {
+        rounds[round].winningNumber = fouceWinner;
+    }
+
     function getTicketsPerRound(
         uint256 round
     ) external view returns (UserTicketDetail[] memory) {
@@ -365,16 +380,12 @@ contract GhostieCore is IGhostieCore, Ownable {
             string[] memory _numbers = numbersOfTicket[msg.sender][round][
                 tickets[i]
             ];
-            // WinnerPrice[] memory winTypes = numbersWinType[msg.sender][round][
-            //     tickets[i]
-            // ];
             uint256 totalBalance = investorRoundBalance[msg.sender][round];
 
             UserTicketDetail memory ticketsDetail;
 
             ticketsDetail.ticketId = tickets[i];
             ticketsDetail.numbers = _numbers;
-            // ticketsDetail.winnerType = winTypes;
             ticketsDetail.totalBalance = totalBalance;
 
             totalTicket[i] = ticketsDetail;

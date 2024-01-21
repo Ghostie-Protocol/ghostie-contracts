@@ -24,5 +24,5 @@ interface IHandler {
 
     function claim(uint256 _round, uint256 _ticketId, address _to) external;
 
-    function withdraw(uint256 _ticketId, address _to) external;
+    function withdraw(uint256 _ticketId, address _to, uint256 share) external;
 }
