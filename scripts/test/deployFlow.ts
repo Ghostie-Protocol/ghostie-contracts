@@ -28,27 +28,35 @@ async function main() {
       "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c",
   };
 
+  const usdc = await deployToken("USDC", "USDC", 18); // USDC
+  console.log("======> usdc pass");
+  const aUSDC = await deployToken("aUSDC", "aUSDC", 18); // aUSDC
+  console.log("======> aUSDC pass");
+  const GHO = await deployToken("GHO", "GHO", 18); // GHO
+  console.log("======> GHO pass");
+
   const { vrfContract } = await deployVRF(mumbai.coordinator, mumbai.keyHash);
+  console.log("======> VRF pass");
 
   const { ticketContract } = await deployTicket(
     "Ghostie Protocal Tickets",
     "GHOSTIE",
     signer.address
   );
+  console.log("======> Ticket pass");
 
   const { coreContract } = await deployCoreContract(
     ticketContract.address,
     vrfContract.address,
-    mumbai.usdtMumbai
+    usdc.address,
+    GHO.address
   );
+  console.log("======> Core pass");
 
   await ticketContract.write.transferOwnership([coreContract.address]);
 
-  const usdc = await deployToken("USDC", "USDC", 18); // USDC
-  const aUSDC = await deployToken("aUSDC", "aUSDC", 18); // aUSDC
-  const GHO = await deployToken("GHO", "GHO", 18); // GHO
-
   const mockPool = await deployMockPool(aUSDC.address);
+  console.log("======> Pool pass");
 
   const farmConfig: FarmConfig = {
     coreContract: coreContract.address,
@@ -61,6 +69,8 @@ async function main() {
   };
 
   const handler = await deployHandler(farmConfig);
+
+  console.log("======> Handler pass");
 
   const contractAddress = {
     ...farmConfig,

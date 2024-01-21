@@ -5,7 +5,8 @@ import accountUtils from "../../utils/accountUtils";
 export async function deployCoreContract(
   ticketAddress: string,
   vrfAddress: string,
-  usdc: string
+  usdc: string,
+  borrowToken: string
 ) {
   const signer = privateKeyToAccount(`0x${accountUtils.getAccounts()}`);
 
@@ -13,6 +14,7 @@ export async function deployCoreContract(
     usdc,
     ticketAddress,
     vrfAddress,
+    borrowToken,
   ]);
 
   return { coreContract: contract };

@@ -138,6 +138,13 @@ contract Handler is IHandler, Ownable, IERC721Receiver {
         );
     }
 
+    function getBorrowAmount(
+        uint256 _round,
+        uint256 _ticketId
+    ) public view onlyOwner returns (uint256) {
+        return ticketDept[_round][_ticketId];
+    }
+
     function borrow(
         uint256 _round,
         uint256 _ticketId,

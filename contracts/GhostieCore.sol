@@ -10,6 +10,7 @@ import "./interfaces/IHandler.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract GhostieCore is IGhostieCore, Ownable {
     using Strings for string;
@@ -17,6 +18,7 @@ contract GhostieCore is IGhostieCore, Ownable {
 
     IVRF private vrfCore;
     IERC20 immutable usdc;
+    IERC20 immutable borrowToken;
     ITickets immutable ticket;
     IHandler handler;
 
@@ -56,8 +58,14 @@ contract GhostieCore is IGhostieCore, Ownable {
     mapping(address userAddr => mapping(uint256 round => mapping(uint256 => string[]))) numbersOfTicket;
     mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
 
-    constructor(address _usdc, address _ticket, address _vrfAddress) Ownable() {
+    constructor(
+        address _usdc,
+        address _ticket,
+        address _vrfAddress,
+        address _borrowAddress
+    ) Ownable() {
         usdc = IERC20(_usdc);
+        borrowToken = IERC20(_borrowAddress);
         ticket = ITickets(_ticket);
         vrfCore = IVRF(_vrfAddress);
 
@@ -176,10 +184,38 @@ contract GhostieCore is IGhostieCore, Ownable {
     function borrow(
         uint256 _round,
         uint256 _ticketId,
-        address _borrower,
         uint256 _amount
     ) external {
-        // handler.borrow(_round, _ticketId, _borrower, _amount);
+        address ticketOwnerAddr = IERC721(address(ticket)).ownerOf(_ticketId);
+        require(ticketOwnerAddr == msg.sender, "Is not your ticket");
+
+        address approveAdderss = IERC721(address(ticket)).getApproved(
+            _ticketId
+        );
+
+        require(
+            approveAdderss == address(handler),
+            "Cannot borrow, approve ticket to handler"
+        );
+        handler.borrow(_round, _ticketId, msg.sender, _amount);
+    }
+
+    function repay(uint256 _round, uint256 _ticketId) external {
+        uint256 borrowAmount = handler.getBorrowAmount(_round, _ticketId);
+
+        require(borrowAmount > 0, "Amount is not enough!");
+
+        uint256 allowanceBorrowToken = borrowToken.allowance(
+            msg.sender,
+            address(handler)
+        );
+
+        require(
+            allowanceBorrowToken >= borrowAmount,
+            "Approve borrow token is not enough!"
+        );
+
+        handler.repay(_round, _ticketId, msg.sender);
     }
 
     function claim(uint256 round, uint256 _ticketId) external {

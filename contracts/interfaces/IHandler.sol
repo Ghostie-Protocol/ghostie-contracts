@@ -16,6 +16,11 @@ interface IHandler {
     event Farm(uint256 indexed _round, address _poolAddress, uint256 _amount);
     event Claim(uint256 indexed _round, uint256 indexed _ticketId, address _to);
 
+    function getBorrowAmount(
+        uint256 _round,
+        uint256 _ticketId
+    ) external view returns (uint256);
+
     function getTicketYield(
         uint256 _round,
         uint256 _ticketId
@@ -31,4 +36,19 @@ interface IHandler {
         address _to,
         uint256 _prize
     ) external;
+
+    function borrow(
+        uint256 _round,
+        uint256 _ticketId,
+        address _borrower,
+        uint256 _amount
+    ) external;
+
+    function repay(
+        uint256 _round,
+        uint256 _ticketId,
+        address _borrower
+    ) external;
+
+    function stopFarm(uint256 _round) external returns (uint256);
 }
