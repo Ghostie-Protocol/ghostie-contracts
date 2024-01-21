@@ -73,7 +73,7 @@ interface IGhostieCore {
 
     function claim(uint256 round, uint256 _ticketId) external;
 
-    function checkWinningDrawPrice(uint256 _round) external;
+    function checkWinningDrawPrice() external;
 
     function borrow(
         uint256 _round,
@@ -95,4 +95,6 @@ interface IGhostieCore {
     ) external view returns (UserTicketDetail[] memory);
 
     function updateWinningNumber(uint256 winningNumber, uint256 round) external;
+
+    function updateRoundTime(uint256 time) external;
 }

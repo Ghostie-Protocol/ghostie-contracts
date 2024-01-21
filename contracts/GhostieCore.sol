@@ -75,6 +75,10 @@ contract GhostieCore is IGhostieCore, Ownable {
         roundTime = 10 minutes;
     }
 
+    function updateRoundTime(uint256 time) external onlyOwner {
+        roundTime = time;
+    }
+
     function startLottoRound(
         uint256 startDate,
         uint256 endDate
@@ -276,25 +280,27 @@ contract GhostieCore is IGhostieCore, Ownable {
         }
     }
 
-    function checkWinningDrawPrice(uint256 _round) external {
-        RoundDetail memory roundDetail = rounds[_round];
+    function checkWinningDrawPrice() external {
+        RoundDetail memory roundDetail = rounds[currentRound];
 
         string memory jackpotResult = roundDetail.winningNumber;
         string memory match5dResult = substring(jackpotResult, 1, 6);
         string memory match4dResult = substring(jackpotResult, 2, 6);
         string memory match3dResult = substring(jackpotResult, 3, 6);
 
-        address[] memory investors = totalInvestor[_round];
+        address[] memory investors = totalInvestor[currentRound];
 
         for (uint i = 0; i < investors.length; i++) {
             address currInvertor = investors[i];
 
-            uint256[] memory tickets = investorTickets[currInvertor][_round];
+            uint256[] memory tickets = investorTickets[currInvertor][
+                currentRound
+            ];
 
             for (uint j = 0; j < tickets.length; j++) {
                 uint256 ticketId = tickets[j];
                 string[] memory _numbers = numbersOfTicket[currInvertor][
-                    _round
+                    currentRound
                 ][ticketId];
 
                 calWinnerPrice(
@@ -304,13 +310,12 @@ contract GhostieCore is IGhostieCore, Ownable {
                     match4dResult,
                     match3dResult,
                     currInvertor,
-                    ticketId,
-                    _round
+                    ticketId
                 );
             }
         }
 
-        rounds[_round].isCalWinner = true;
+        rounds[currentRound].isCalWinner = true;
 
         address[] memory matchAll = roundDetail.matchAll;
         address[] memory match5d = roundDetail.match5d;
@@ -333,11 +338,15 @@ contract GhostieCore is IGhostieCore, Ownable {
         for (uint i = 0; i < investors.length; i++) {
             address currInvertor = investors[i];
 
-            uint256[] memory tickets = investorTickets[currInvertor][_round];
+            uint256[] memory tickets = investorTickets[currInvertor][
+                currentRound
+            ];
 
             for (uint j = 0; j < tickets.length; j++) {
                 uint256 ticketId = tickets[j];
-                WinnerDetail[] memory numbers = roundWinner[_round][ticketId];
+                WinnerDetail[] memory numbers = roundWinner[currentRound][
+                    ticketId
+                ];
 
                 uint256 totalWin = calulateTicketShareWinPrice(
                     numbers,
@@ -345,11 +354,13 @@ contract GhostieCore is IGhostieCore, Ownable {
                     last5dShare,
                     last4dShare,
                     last3dShare,
-                    _round,
+                    currentRound,
                     ticketId
                 );
 
-                ticketTotalWinShare[currInvertor][_round][ticketId] = totalWin;
+                ticketTotalWinShare[currInvertor][currentRound][
+                    ticketId
+                ] = totalWin;
             }
         }
     }
@@ -392,8 +403,7 @@ contract GhostieCore is IGhostieCore, Ownable {
         string memory match4dResult,
         string memory match3dResult,
         address sender,
-        uint256 ticketId,
-        uint256 _round
+        uint256 ticketId
     ) internal {
         for (uint k = 0; k < _numbers.length; k++) {
             string memory number5d = substring(_numbers[k], 1, 6);
@@ -406,22 +416,22 @@ contract GhostieCore is IGhostieCore, Ownable {
             winnerDetail.number = _numbers[k];
 
             if (stringsEqual(_numbers[k], jackpotResult)) {
-                rounds[_round].matchAll.push(sender);
+                rounds[currentRound].matchAll.push(sender);
                 winnerDetail.winnerType = WinnerPrice.JACKPOT;
             } else if (stringsEqual(number5d, match5dResult)) {
-                rounds[_round].match5d.push(sender);
+                rounds[currentRound].match5d.push(sender);
                 winnerDetail.winnerType = WinnerPrice.LAST_FIVE_DIGITS;
             } else if (stringsEqual(number4d, match4dResult)) {
-                rounds[_round].match4d.push(sender);
+                rounds[currentRound].match4d.push(sender);
                 winnerDetail.winnerType = WinnerPrice.LAST_FOUR_DIGITS;
             } else if (stringsEqual(number3d, match3dResult)) {
-                rounds[_round].match3d.push(sender);
+                rounds[currentRound].match3d.push(sender);
                 winnerDetail.winnerType = WinnerPrice.LAST_THREE_DIGITS;
             } else {
                 winnerDetail.winnerType = WinnerPrice.ZERO;
             }
 
-            roundWinner[_round][ticketId].push(winnerDetail);
+            roundWinner[currentRound][ticketId].push(winnerDetail);
         }
     }
 
