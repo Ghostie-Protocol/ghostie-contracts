@@ -31,6 +31,7 @@ contract GhostieCore is IGhostieCore, Ownable {
         uint256 ticketPrice;
         uint256 totalBalance;
         uint256 prizePot;
+        bool isFarm;
         bool isCalWinner;
         address[] matchAll;
         address[] match5d;
@@ -92,19 +93,15 @@ contract GhostieCore is IGhostieCore, Ownable {
                 "Cannot start a new round, the current round has not expired."
             );
         }
-        require(
-            rounds[currentRound].isCalWinner,
-            "Should be calculate winner round!"
-        );
+
+        if (currentRound > 0) {
+            require(
+                rounds[currentRound].isCalWinner,
+                "Should be calculate winner round!"
+            );
+        }
 
         currentRound++;
-
-        uint256 roundBefore = currentRound - 1;
-        RoundDetail memory roundDetailBefore = rounds[roundBefore];
-
-        if (currentRound > 1 && roundDetailBefore.totalBalance > 0) {
-            handler.farm(roundBefore, roundDetailBefore.totalBalance);
-        }
 
         _roundDetail.startDate = startDate;
         _roundDetail.endDate = endDate;
@@ -117,6 +114,17 @@ contract GhostieCore is IGhostieCore, Ownable {
         return (currentRound);
     }
 
+    function farm(uint256 round) external {
+        require(rounds[round].endDate <= block.timestamp, "can not farm");
+
+        uint256 roundBefore = round;
+        RoundDetail memory roundDetailBefore = rounds[roundBefore];
+
+        if (roundDetailBefore.totalBalance > 0) {
+            handler.farm(roundBefore, roundDetailBefore.totalBalance);
+        }
+    }
+
     function closeLottoRound(uint256 round) external onlyOwner {
         RoundDetail memory _roundDetail = rounds[round];
         require(
@@ -124,19 +132,18 @@ contract GhostieCore is IGhostieCore, Ownable {
             "The sale time has not yet expired."
         );
 
-        require(
-            _roundDetail.drawDate <= block.timestamp,
-            "It's not yet time to close the farming round."
-        );
+        if (_roundDetail.totalBalance > 0) {
+            require(
+                _roundDetail.drawDate <= block.timestamp,
+                "It's not yet time to close the farming round."
+            );
+            uint256 totalFram = handler.stopFarm(round);
+            rounds[round].prizePot = totalFram - rounds[round].totalBalance;
+        }
 
         uint256 requestId = vrfCore.requestRandomWords(round);
 
         rounds[round].randomRequestId = requestId;
-
-        if (rounds[round].totalBalance > 0) {
-            uint256 totalFram = handler.stopFarm(round);
-            rounds[round].prizePot = totalFram - rounds[round].totalBalance;
-        }
 
         emit CloseRound(msg.sender, round);
     }

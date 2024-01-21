@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
     mumbai: {
       url: "https://polygon-mumbai-bor.publicnode.com",
       accounts: accountUtils.getAccounts(),
-      gasPrice: 35000000000,
+      gasPrice: 45000000000,
     },
     fuji: {
       url: "https://avalanche-fuji-c-chain.publicnode.com",
