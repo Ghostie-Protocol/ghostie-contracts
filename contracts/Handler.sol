@@ -6,12 +6,11 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/ITickets.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
-import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 pragma solidity ^0.8.20;
 
-contract Handler is IHandler, Ownable {
+contract Handler is IHandler, Ownable, IERC721Receiver {
     using SafeMath for uint256;
     address private operator;
 
@@ -22,11 +21,12 @@ contract Handler is IHandler, Ownable {
     address public ticketAddress; // ERC721
 
     uint256 public preYieldSupply;
-    mapping(uint256 => uint256) private ticketDept;
     mapping(uint256 => uint256) private ticketClaimed;
     mapping(uint256 => uint256) private ticketWithdrawed;
     mapping(uint256 => uint256) private ticketClaimeStamp;
+    mapping(uint256 => mapping(uint256 => uint256)) private ticketDept; // round -> ticket id -> amout
     mapping(uint256 => uint256) private farmAmount;
+    mapping(uint256 => uint256) private farmStopAmount;
 
     constructor(FarmConfig memory _farmConfig) Ownable() {
         transferOwnership(_farmConfig.coreContract);
@@ -101,6 +101,7 @@ contract Handler is IHandler, Ownable {
 
         ticketClaimed[_ticketId] += ticketYield;
         ticketClaimeStamp[_ticketId] = block.timestamp;
+        farmAmount[_round] -= ticketYield;
         IERC20(aTokenAddress).approve(poolAddress, ticketYield);
         IPool(poolAddress).withdraw(
             tokenAddress,
@@ -127,6 +128,7 @@ contract Handler is IHandler, Ownable {
         uint256 withdrawAmount = ticketValue.add(winPrize);
 
         ticketWithdrawed[_ticketId] += withdrawAmount;
+        farmAmount[_round] -= withdrawAmount;
         IERC20(aTokenAddress).approve(poolAddress, withdrawAmount);
         IPool(poolAddress).withdraw(
             tokenAddress,
@@ -137,6 +139,7 @@ contract Handler is IHandler, Ownable {
     }
 
     function borrow(
+        uint256 _round,
         uint256 _ticketId,
         address _borrower,
         uint256 _amount
@@ -145,17 +148,20 @@ contract Handler is IHandler, Ownable {
         uint256 maximum = (ticketValue * 7) / 10;
 
         require(_amount <= maximum, "Maximum borrow amount > maximum");
-        require(!(ticketDept[_ticketId] != 0), "Ticket dept is not paid");
+        require(
+            !(ticketDept[_round][_ticketId] != 0),
+            "Ticket dept is not paid"
+        );
 
-        ticketDept[_ticketId] += _amount;
+        ticketDept[_round][_ticketId] += _amount;
 
+        // borrower approve erc721 to handler
         IERC721(ticketAddress).safeTransferFrom(
             _borrower,
             address(this),
             _ticketId
         );
 
-        // IPool(poolAddress).borrow(borrowTokenAddress, _amount, 2, 0, _borrower); // recheck onBehalfOf
         IPool(poolAddress).borrow(
             borrowTokenAddress,
             _amount,
@@ -165,5 +171,49 @@ contract Handler is IHandler, Ownable {
         );
 
         IERC20(borrowTokenAddress).transfer(_borrower, _amount);
+    }
+
+    function repay(
+        uint256 _round,
+        uint256 _ticketId,
+        address _borrower
+    ) public onlyOwner {
+        // Borrower must approve to handler
+        IERC20(borrowTokenAddress).transferFrom(
+            _borrower,
+            address(this),
+            ticketDept[_round][_ticketId]
+        );
+
+        IERC721(ticketAddress).safeTransferFrom(
+            address(this),
+            _borrower,
+            _ticketId
+        );
+    }
+
+    function stopFarm(uint256 _round) public onlyOwner returns (uint256) {
+        uint256 aBalance = IERC20(aTokenAddress).balanceOf(address(this));
+        require(aBalance > 0, "Farming amount is 0");
+        farmStopAmount[_round] = aBalance;
+
+        IERC20(aTokenAddress).approve(poolAddress, aBalance);
+        IPool(poolAddress).withdraw(
+            tokenAddress,
+            aBalance,
+            address(this),
+            address(this)
+        );
+
+        return aBalance;
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }

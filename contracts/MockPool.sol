@@ -10,6 +10,7 @@ pragma solidity ^0.8.20;
 
 contract MockPool is IPool {
     mapping(address => uint256) private supplyAmount;
+    mapping(address => uint256) private borrowAmount;
     mapping(address => uint256) private withDrawAmount;
     mapping(address => uint16) private refferalcode;
 
@@ -66,5 +67,9 @@ contract MockPool is IPool {
         uint256 interestRateMode,
         uint16 referralCode,
         address onBehalfOf
-    ) external override {}
+    ) external override {
+        require(amount > 0, "Borrow amount must more than 0");
+        borrowAmount[msg.sender] += amount;
+        IERC20(asset).mint(onBehalfOf, amount);
+    }
 }
