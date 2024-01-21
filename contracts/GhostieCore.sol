@@ -51,6 +51,8 @@ contract GhostieCore is IGhostieCore, Ownable {
     mapping(address userAddr => mapping(uint256 round => uint256[])) investorTickets;
     mapping(address userAddr => mapping(uint256 round => mapping(uint256 ticketId => uint256 totalWin)))
         public ticketTotalWinShare;
+    mapping(address userAddr => mapping(uint256 round => mapping(uint256 ticketId => bool isClaim)))
+        public isClaimTotalWinShare;
     mapping(address userAddr => mapping(uint256 round => mapping(uint256 => string[]))) numbersOfTicket;
     mapping(address userAddr => mapping(uint256 round => uint256)) investorRoundBalance;
 
@@ -197,10 +199,20 @@ contract GhostieCore is IGhostieCore, Ownable {
                 "Still cannot withdraw The system is processing the winnings."
             );
 
+            WinnerDetail[] memory numbers = roundWinner[round][_ticketId];
+
+            for (uint i = 0; i < numbers.length; i++) {
+                roundWinner[round][_ticketId][i].isClaim = true;
+            }
+
             uint256 totalShare = ticketTotalWinShare[msg.sender][round][
                 _ticketId
             ];
+            bool isClaim = isClaimTotalWinShare[msg.sender][round][_ticketId];
 
+            require(!isClaim, "Already claim");
+
+            isClaimTotalWinShare[msg.sender][round][_ticketId] = true;
             handler.withdraw(round, _ticketId, msg.sender, totalShare);
         }
     }
